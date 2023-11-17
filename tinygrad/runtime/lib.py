@@ -14,6 +14,7 @@ class RawBuffer:  # pylint: disable=abstract-method
     self._allocator = allocator if allocator and hasattr(allocator, 'free') else None
     self._device = kwargs.get('device', None)
     GlobalCounters.mem_used += self._memsz
+    GlobalCounters.max_mem_used = max(GlobalCounters.max_mem_used, GlobalCounters.mem_used)
   def __del__(self):  # NOTE: if it fails on init (bad dtype), it won't have a _memsz
     if hasattr(self, '_memsz'): GlobalCounters.mem_used -= self._memsz
     if hasattr(self, '_allocator') and self._allocator: self._allocator.free(self._buf)
@@ -92,6 +93,7 @@ class LRUAllocator:
         if len(self.aging_order[device]) == 0: raise
         self.ensure_has_free_space(1.1*self._get_cur_free_space(device), device) # increase free space by 10% and try again.
     self.free_space[device] -= size*dtype.itemsize
+    GlobalCounters.allocs_done.append((True, size * dtype.itemsize))
     self.buffer_info[newbuf] = (size, dtype, device)
     return newbuf
 
